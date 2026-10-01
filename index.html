@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="vi" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEETING ROOM BOOKING - Quản Lý Lịch Họp</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#2563eb',
+                            600: '#1d4ed8',
+                            700: '#1e40af',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.4);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(107, 114, 128, 0.7);
+        }
+
+        /* Drag & Drop Visual Indicators */
+        .drag-over {
+            border: 2px dashed #2563eb !important;
+            background-color: rgba(37, 99, 235, 0.08) !important;
+        }
+        
+        .dragging {
+            opacity: 0.4;
+            transform: scale(0.98);
+        }
+
+        /* Glassmorphism utility */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-500 selection:text-white">
+
+    <!-- App Container -->
+    <div id="app" class="flex-1 flex flex-col">
+        
+        <!-- HEADER / NAVIGATION -->
+        <header id="mainHeader" class="sticky top-0 z-30 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700/80 px-4 lg:px-8 py-3.5 shadow-sm transition-colors hidden">
+            <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+                
+                <!-- Logo & Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                        <i data-lucide="calendar-days" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                            MEETING ROOM BOOKING
+                        </h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Hệ thống đặt lịch phòng họp nội bộ</p>
+                    </div>
+                </div>
+
+                <!-- Room Selector & Actions -->
+                <div class="flex items-center space-x-3 flex-wrap">
+                    
+                    <!-- Room Dropdown Selector -->
+                    <div id="roomSelectorWrapper" class="hidden sm:flex items-center space-x-2 bg-slate-100 dark:bg-slate-700/60 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600">
+                        <i data-lucide="door-closed" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>
+                        <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">Phòng:</span>
+                        <select id="selectedRoomSelect" onchange="changeRoom(this.value)" class="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer">
+                            <option value="ALL">Tất cả phòng họp</option>
+                            <option value="Phòng (Tầng trệt)">Phòng (Tầng trệt)</option>
+                        </select>
+                    </div>
+
+                    <!-- Light / Dark Mode Switcher -->
+                    <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition-all cursor-pointer" title="Chuyển chế độ Sáng/Tối">
+                        <i id="themeIconSun" data-lucide="sun" class="w-4 h-4 hidden dark:block text-amber-400"></i>
+                        <i id="themeIconMoon" data-lucide="moon" class="w-4 h-4 block dark:hidden text-slate-700"></i>
+                    </button>
+
+                    <!-- Logged User Info / Actions -->
+                    <div id="userHeaderBlock" class="hidden items-center space-x-3 pl-2 border-l border-slate-200 dark:border-slate-700">
+                        <!-- User Badge -->
+                        <div class="text-right hidden md:block">
+                            <div id="headerUserName" class="text-xs font-bold text-slate-800 dark:text-slate-100">---</div>
+                            <div class="flex items-center justify-end space-x-1">
+                                <span id="headerUserDept" class="text-[10px] text-slate-500 dark:text-slate-400">---</span>
+                                <span id="headerUserRoleBadge" class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">USER</span>
+                            </div>
+                        </div>
+
+                        <!-- User Management Button (ADMIN ONLY) -->
+                        <button id="adminUserMgmtBtn" onclick="openUserMgmtModal()" class="hidden text-xs font-semibold px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 transition cursor-pointer flex items-center space-x-1.5">
+                            <i data-lucide="users" class="w-4 h-4"></i>
+                            <span>Quản lý User</span>
+                        </button>
+
+                        <!-- Logout Button -->
+                        <button onclick="logout()" class="p-2 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer" title="Đăng xuất">
+                            <i data-lucide="log-out" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+        </header>
+
+        <!-- LOGIN VIEW -->
+        <div id="loginView" class="flex-1 flex items-center justify-center p-4 min-h-screen transition-all duration-700">
+            <div class="w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-white/60 dark:border-slate-700/80 my-auto">
+                
+                <!-- Dark Navy Card Top Header -->
+                <div class="bg-[#0b1329] text-white p-7 text-center space-y-3 relative overflow-hidden">
+                    <!-- Subtle background glow -->
+                    <div class="absolute -top-12 -right-12 w-32 h-32 bg-orange-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                    <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+                    <!-- Icon Tile -->
+                    <div class="inline-flex p-3 rounded-2xl bg-white/10 backdrop-blur-md text-amber-400 border border-white/10 shadow-inner mb-1">
+                        <i data-lucide="bookmark" class="w-7 h-7"></i>
+                    </div>
+
+                    <!-- App Title & Subtitle -->
+                    <div class="space-y-1">
+                        <h2 class="text-xl font-extrabold tracking-tight text-white">DNTG Meeting (v1.0)</h2>
+                        <p class="text-xs text-slate-300 font-medium">Hệ thống đặt lịch phòng họp</p>
+                    </div>
+                </div>
+
+                <!-- White Card Body -->
+                <div class="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl p-6 sm:p-8 space-y-5">
+                    
+                    <!-- Dynamic Time-Based Greeting Banner -->
+                    <div class="p-3.5 rounded-2xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/50 text-center space-y-1 shadow-sm">
+                        <div id="greetingTitle" class="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center justify-center gap-1.5">
+                            <span>Chào buổi chiều thật nhiều cơ hội!</span> ✨ ☕
+                        </div>
+                        <div id="greetingQuote" class="text-[11px] italic text-amber-700/90 dark:text-amber-300/80">
+                            "Hôm nay làm tốt hơn hôm qua, ngày mai sẽ dẫn đầu."
+                        </div>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">TÀI KHOẢN ĐĂNG NHẬP</label>
+                            <div class="relative">
+                                <i data-lucide="mail" class="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400"></i>
+                                <input type="text" id="loginEmail" required placeholder="Nhập username hoặc email của bạn" 
+                                       class="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50/80 dark:bg-slate-700/50 text-slate-800 dark:text-slate-100 text-xs font-semibold focus:ring-2 focus:ring-amber-500 focus:border-amber-500 focus:outline-none transition">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">MẬT KHẨU</label>
+                            <div class="relative">
+                                <i data-lucide="lock" class="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400"></i>
+                                <input type="password" id="loginPassword" required placeholder="••••••••" 
+                                       class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50/80 dark:bg-slate-700/50 text-slate-800 dark:text-slate-100 text-xs font-semibold focus:ring-2 focus:ring-amber-500 focus:border-amber-500 focus:outline-none transition">
+                                <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none">
+                                    <i id="passwordEyeIcon" data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Remember Me Checkbox -->
+                        <div class="flex items-center justify-between text-xs pt-1">
+                            <label class="flex items-center space-x-2 cursor-pointer text-slate-600 dark:text-slate-300 select-none">
+                                <input type="checkbox" id="rememberMe" class="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-amber-600 focus:ring-amber-500 bg-slate-50 dark:bg-slate-700 cursor-pointer">
+                                <span class="text-xs font-medium">Ghi nhớ đăng nhập (Cookie)</span>
+                            </label>
+                        </div>
+
+                        <div id="loginErrorMsg" class="hidden text-xs text-rose-500 bg-rose-50 dark:bg-rose-950/50 p-2.5 rounded-xl text-center font-semibold"></div>
+
+                        <!-- Orange Primary Button -->
+                        <button type="submit" class="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs shadow-lg shadow-orange-500/30 transition duration-200 cursor-pointer flex items-center justify-center space-x-2 active:scale-[0.99]">
+                            <i data-lucide="log-in" class="w-4 h-4"></i>
+                            <span>Đăng nhập</span>
+                        </button>
+                    </form>
+
+                    <!-- Quick Account Selector Demo -->
+                    <div class="pt-4 border-t border-slate-100 dark:border-slate-700/80">
+                        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider mb-2 text-center">Tài khoản thử nghiệm (Mật khẩu: <span class="text-orange-600 dark:text-orange-400 font-mono">123456</span>)</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" onclick="fillQuickLogin('admin@dntg.com.vn', '123456')" class="p-2 rounded-xl bg-slate-100/80 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-left transition cursor-pointer border border-slate-200/50 dark:border-slate-600/50">
+                                <div class="text-xs font-bold text-slate-700 dark:text-slate-200">Quản trị viên (Admin)</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400 truncate">admin@dntg.com.vn</div>
+                            </button>
+                            <button type="button" onclick="fillQuickLogin('demo@dntg.com.vn', '123456')" class="p-2 rounded-xl bg-slate-100/80 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-left transition cursor-pointer border border-slate-200/50 dark:border-slate-600/50">
+                                <div class="text-xs font-bold text-slate-700 dark:text-slate-200">Nhân viên (Demo)</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400 truncate">demo@dntg.com.vn</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Footer Inside Login Card -->
+                    <div class="pt-2 text-center">
+                        <p class="text-[11px] text-slate-400 dark:text-slate-500 font-medium">© 2026 DNTG. All rights reserved.</p>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- MAIN CALENDAR DASHBOARD VIEW -->
+        <main id="mainDashboardView" class="hidden flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 flex-col space-y-5">
+            
+            <!-- Controls Bar: View Modes, Navigation & Booking Button -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">
+                
+                <!-- Date Nav & Display -->
+                <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
+                    <div class="flex items-center space-x-1 bg-slate-100 dark:bg-slate-700/70 p-1 rounded-xl">
+                        <button onclick="navigateCalendar(-1)" class="p-2 hover:bg-white dark:hover:bg-slate-600 rounded-lg text-slate-600 dark:text-slate-200 transition cursor-pointer" title="Lùi lại">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="goToToday()" class="px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-600 rounded-lg transition cursor-pointer">
+                            Hôm nay
+                        </button>
+                        <button onclick="navigateCalendar(1)" class="p-2 hover:bg-white dark:hover:bg-slate-600 rounded-lg text-slate-600 dark:text-slate-200 transition cursor-pointer" title="Tiến tới">
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <h2 id="currentCalendarHeader" class="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">
+                        Tháng 10 / 2026
+                    </h2>
+                </div>
+
+                <!-- Legend & View Switcher Droplist & Add Button -->
+                <div class="flex items-center space-x-3 w-full md:w-auto justify-end flex-wrap gap-y-2">
+                    
+                    <!-- Color Category Legend -->
+                    <div class="hidden lg:flex items-center space-x-3 text-xs pr-2 border-r border-slate-200 dark:border-slate-700">
+                        <span class="flex items-center space-x-1">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                            <span class="text-slate-600 dark:text-slate-300 text-[11px]">Quan trọng</span>
+                        </span>
+                        <span class="flex items-center space-x-1">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                            <span class="text-slate-600 dark:text-slate-300 text-[11px]">Bình thường</span>
+                        </span>
+                        <span class="flex items-center space-x-1">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                            <span class="text-slate-600 dark:text-slate-300 text-[11px]">Định kỳ</span>
+                        </span>
+                    </div>
+
+                    <!-- View Droplist -->
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline">Chế độ xem:</span>
+                        <select id="viewModeSelect" onchange="changeViewMode(this.value)" 
+                                class="bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-bold rounded-xl px-3 py-2 border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                            <option value="MONTH">Xem theo Tháng</option>
+                            <option value="DAY">Xem theo Ngày</option>
+                            <option value="YEAR">Xem theo Năm</option>
+                            <option value="LIST">Danh sách lịch họp</option>
+                        </select>
+                    </div>
+
+                    <!-- Book Meeting Button -->
+                    <button onclick="openBookingModal()" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-500/20 transition cursor-pointer flex items-center space-x-1.5">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Tạo Lịch Họp</span>
+                    </button>
+
+                </div>
+
+            </div>
+
+            <!-- Calendar Display Area -->
+            <div id="calendarDisplayContainer" class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm overflow-hidden flex-1 flex flex-col min-h-[550px]">
+                <!-- Dynamic Content Rendered Here (Month/Day/Year/List) -->
+            </div>
+
+            <!-- Footer - Main Page -->
+            <footer class="py-3 text-center text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200/60 dark:border-slate-700/60 mt-auto">
+                ©2026 DNTG. All rights reserved.
+            </footer>
+
+        </main>
+    </div>
+
+    <!-- MODAL: Create / Edit Meeting Form -->
+    <div id="bookingModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-5 animate-in fade-in duration-200">
+            
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+                <div class="flex items-center space-x-2">
+                    <div class="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+                        <i data-lucide="calendar-plus" class="w-5 h-5"></i>
+                    </div>
+                    <h3 id="bookingModalTitle" class="text-base font-bold text-slate-800 dark:text-slate-100">
+                        Đặt Lịch Họp Mới
+                    </h3>
+                </div>
+                <button onclick="closeBookingModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="bookingForm" onsubmit="saveMeeting(event)" class="space-y-4">
+                <input type="hidden" id="meetingId">
+                <input type="hidden" id="meetingSeriesId">
+
+                <!-- Title & Department Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Tên Bộ Phận *</label>
+                        <select id="meetingDept" required class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-xs font-medium text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="BOD">BOD</option>
+                            <option value="SALES">SALES</option>
+                            <option value="MKT">MKT</option>
+                            <option value="R&D">R&D</option>
+                            <option value="TECH">TECH</option>
+                            <option value="FINANCE">FINANCE</option>
+                            <option value="HR">HR</option>
+                        </select>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Tiêu Đề Cuộc Họp *</label>
+                        <input type="text" id="meetingTitle" required placeholder="VD: Sales Monthly Meeting" 
+                               class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-xs font-medium text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Room Selection -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Phòng Họp *</label>
+                    <select id="meetingRoom" required class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-xs font-medium text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="Phòng (Tầng trệt)">Phòng (Tầng trệt)</option>
+                    </select>
+                </div>
+
+                <!-- Date & Time Slot Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Ngày Họp *</label>
+                        <input type="date" id="meetingDate" required 
+                               class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-xs font-medium text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Giờ Bắt Đầu *</label>
+                        <input type="time" id="meetingStartTime" required 
+                               class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-xs font-medium text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Giờ Kết Thúc *</label>
+                        <input type="time" id="meetingEndTime" required 
+                               class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-xs font-medium text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Meeting Type & Color -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">Loại Cuộc Họp & Màu Sắc Quy Định *</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="cursor-pointer border rounded-xl p-2.5 flex flex-col items-center justify-center text-center space-y-1 transition hover:bg-slate-50 dark:hover:bg-slate-700/50 has-[:checked]:border-rose-500 has-[:checked]:bg-rose-50/50 dark:has-[:checked]:bg-rose-950/30">
+                            <input type="radio" name="meetingType" value="IMPORTANT" onchange="toggleRecurringOptions()" class="sr-only" checked>
+                            <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                            <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">Quan trọng</span>
+                        </label>
+                        <label class="cursor-pointer border rounded-xl p-2.5 flex flex-col items-center justify-center text-center space-y-1 transition hover:bg-slate-50 dark:hover:bg-slate-700/50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/50 dark:has-[:checked]:bg-blue-950/30">
+                            <input type="radio" name="meetingType" value="NORMAL" onchange="toggleRecurringOptions()" class="sr-only">
+                            <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                            <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">Bình thường</span>
+                        </label>
+                        <label class="cursor-pointer border rounded-xl p-2.5 flex flex-col items-center justify-center text-center space-y-1 transition hover:bg-slate-50 dark:hover:bg-slate-700/50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/50 dark:has-[:checked]:bg-emerald-950/30">
+                            <input type="radio" name="meetingType" value="RECURRING" onchange="toggleRecurringOptions()" class="sr-only">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                            <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">Định kỳ</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Recurring Options Block -->
+                <div id="recurringOptionsContainer" class="hidden p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-3">
+                    <div class="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center space-x-1">
+                        <i data-lucide="repeat" class="w-3.5 h-3.5"></i>
+                        <span>Thiết lập lặp lại tự động</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Tần Suất</label>
+                            <select id="recurringFrequency" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-100">
+                                <option value="MONTHLY">Hàng Tháng</option>
+                                <option value="QUARTERLY">Hàng Quý</option>
+                                <option value="YEARLY">Hàng Năm</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Tháng Kết Thúc</label>
+                            <select id="recurringEndMonth" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-100">
+                                <option value="1">Tháng 1</option>
+                                <option value="2">Tháng 2</option>
+                                <option value="3">Tháng 3</option>
+                                <option value="4">Tháng 4</option>
+                                <option value="5">Tháng 5</option>
+                                <option value="6">Tháng 6</option>
+                                <option value="7">Tháng 7</option>
+                                <option value="8">Tháng 8</option>
+                                <option value="9">Tháng 9</option>
+                                <option value="10">Tháng 10</option>
+                                <option value="11">Tháng 11</option>
+                                <option value="12" selected>Tháng 12</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Năm Kết Thúc</label>
+                            <select id="recurringEndYear" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-100">
+                                <option value="2026" selected>2026</option>
+                                <option value="2027">2027</option>
+                                <option value="2028">2028</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary / Description -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nội Dung Tóm Tắt Cuộc Họp</label>
+                    <textarea id="meetingSummary" rows="3" placeholder="Ghi chú thêm về nội dung, tài liệu chuẩn bị, người tham dự..."
+                              class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
+                    <button type="button" id="deleteMeetingBtnModal" onclick="promptDeleteCurrentModalMeeting()" class="hidden px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-xs font-semibold transition cursor-pointer flex items-center space-x-1">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        <span>Xóa lịch họp</span>
+                    </button>
+                    <div class="flex items-center space-x-2 ml-auto">
+                        <button type="button" onclick="closeBookingModal()" class="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer">
+                            Hủy
+                        </button>
+                        <button type="submit" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-500/20 transition cursor-pointer">
+                            Lưu Lịch Họp
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Recurring Options Prompt (Edit/Delete Choice) -->
+    <div id="recurringChoiceModal" class="fixed inset-0 z-[60] hidden bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+            <div class="flex items-center space-x-3 text-amber-500">
+                <div class="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/60">
+                    <i data-lucide="repeat" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 id="recurringChoiceTitle" class="text-base font-bold text-slate-800 dark:text-slate-100">Xử lý Lịch Họp Định Kỳ</h3>
+                    <p id="recurringChoiceSubtitle" class="text-xs text-slate-500 dark:text-slate-400">Cuộc họp này thuộc chuỗi lịch họp định kỳ.</p>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed" id="recurringChoiceMsg">
+                Bạn muốn thực hiện thao tác này cho duy nhất lịch họp này hay tất cả các lịch họp liên quan trong chuỗi?
+            </p>
+
+            <div class="space-y-2 pt-2">
+                <button id="recurringChoiceOnlyOneBtn" class="w-full py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-bold transition flex items-center justify-between">
+                    <span>1. Chỉ thực hiện với lịch họp này</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+                <button id="recurringChoiceAllBtn" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold transition flex items-center justify-between shadow-md">
+                    <span>2. Thực hiện với TẤT CẢ lịch họp liên quan</span>
+                    <i data-lucide="layers" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="pt-2 text-center">
+                <button onclick="closeRecurringChoiceModal()" class="text-xs text-slate-400 hover:text-slate-600 font-medium">Đóng / Hủy</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL: User Management (ADMIN ONLY) -->
+    <div id="userMgmtModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-5">
+            
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+                <div class="flex items-center space-x-2">
+                    <div class="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                        <i data-lucide="users-round" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Quản Lý Người Dùng (Admin)</h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Tạo mới, sửa, xóa, reset password người dùng hệ thống</p>
+                    </div>
+                </div>
+                <button onclick="closeUserMgmtModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Create / Edit User Form -->
+            <div class="bg-slate-50 dark:bg-slate-700/40 p-4 rounded-xl border border-slate-200 dark:border-slate-600 space-y-3">
+                <h4 id="userFormModeTitle" class="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Tạo Tài Khoản Mới</h4>
+                <form id="userForm" onsubmit="saveUser(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input type="hidden" id="mgmtUserId">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Họ & Tên *</label>
+                        <input type="text" id="mgmtUserName" required placeholder="Nguyễn Văn A" class="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs text-slate-800 dark:text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Email *</label>
+                        <input type="email" id="mgmtUserEmail" required placeholder="user@dntg.com.vn" class="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs text-slate-800 dark:text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Bộ Phận *</label>
+                        <select id="mgmtUserDept" required class="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs text-slate-800 dark:text-slate-100">
+                            <option value="BOD">BOD</option>
+                            <option value="SALES">SALES</option>
+                            <option value="MKT">MKT</option>
+                            <option value="R&D">R&D</option>
+                            <option value="TECH">TECH</option>
+                            <option value="FINANCE">FINANCE</option>
+                            <option value="HR">HR</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Vai Trò *</label>
+                        <select id="mgmtUserRole" required class="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs text-slate-800 dark:text-slate-100">
+                            <option value="Member">Nhân viên (Member)</option>
+                            <option value="Admin">Quản trị viên (Admin)</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2 flex items-center justify-end space-x-2 pt-1">
+                        <button type="button" id="cancelUserEditBtn" onclick="resetUserForm()" class="hidden px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 font-semibold">Hủy chỉnh sửa</button>
+                        <button type="submit" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow transition cursor-pointer">
+                            Lưu Tài Khoản
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Users Table -->
+            <div class="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
+                <table class="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                    <thead class="bg-slate-100 dark:bg-slate-700/80 font-bold text-slate-600 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700">
+                        <tr>
+                            <th class="p-3">Họ Tên</th>
+                            <th class="p-3">Email</th>
+                            <th class="p-3">Bộ Phận</th>
+                            <th class="p-3">Vai Trò</th>
+                            <th class="p-3 text-right">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody" class="divide-y divide-slate-100 dark:divide-slate-700/60">
+                        <!-- Rendered via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button onclick="closeUserMgmtModal()" class="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-300 transition">
+                    Đóng
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- Toast Notification Overlay -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <script>
+        /*************************************************************
+         * DYNAMIC AMBIENT BACKGROUND & GREETING GENERATOR
+         *************************************************************/
+        const AMBIENT_BACKGROUNDS = [
+            'radial-gradient(at 0% 0%, #bae6fd 0px, transparent 50%), radial-gradient(at 100% 100%, #fbcfe8 0px, transparent 50%), radial-gradient(at 50% 50%, #fed7aa 0px, transparent 50%), #f8fafc',
+            'radial-gradient(at 100% 0%, #38bdf8 0px, transparent 50%), radial-gradient(at 0% 100%, #fce7f3 0px, transparent 50%), radial-gradient(at 80% 50%, #e0f2fe 0px, transparent 50%), #fafafa',
+            'radial-gradient(at 20% 30%, #e0f2fe 0px, transparent 45%), radial-gradient(at 80% 80%, #fbcfe8 0px, transparent 45%), radial-gradient(at 50% 100%, #fed7aa 0px, transparent 45%), #f1f5f9',
+            'radial-gradient(at 80% 20%, #7dd3fc 0px, transparent 50%), radial-gradient(at 20% 80%, #ffe4e6 0px, transparent 50%), radial-gradient(at 50% 20%, #e0f2fe 0px, transparent 50%), #f8fafc',
+            'radial-gradient(at 50% 0%, #fbcfe8 0px, transparent 50%), radial-gradient(at 0% 50%, #38bdf8 0px, transparent 50%), radial-gradient(at 100% 100%, #fed7aa 0px, transparent 50%), #fafafa'
+        ];
+
+        function applyRandomLoginBackground() {
+            const loginView = document.getElementById('loginView');
+            if (!loginView) return;
+            const randomIndex = Math.floor(Math.random() * AMBIENT_BACKGROUNDS.length);
+            loginView.style.background = AMBIENT_BACKGROUNDS[randomIndex];
+        }
+
+        function updateGreetingMessage() {
+            const hour = new Date().getHours();
+            const titleEl = document.getElementById('greetingTitle');
+            const quoteEl = document.getElementById('greetingQuote');
+            if (!titleEl || !quoteEl) return;
+
+            if (hour >= 5 && hour < 12) {
+                titleEl.innerHTML = `<span>Chào buổi sáng tràn đầy năng lượng!</span> ☀️ ☕`;
+                quoteEl.textContent = `"Khởi đầu ngày mới với mục tiêu rõ ràng và quyết tâm cao."`;
+            } else if (hour >= 12 && hour < 18) {
+                titleEl.innerHTML = `<span>Chào buổi chiều thật nhiều cơ hội!</span> ✨ ☕`;
+                quoteEl.textContent = `"Hôm nay làm tốt hơn hôm qua, ngày mai sẽ dẫn đầu."`;
+            } else {
+                titleEl.innerHTML = `<span>Chào buổi tối hiệu quả và thư thái!</span> 🌙 ✨`;
+                quoteEl.textContent = `"Hoàn thành công việc xuất sắc để tận hưởng trọn vẹn buổi tối."`;
+            }
+        }
+
+        function togglePasswordVisibility() {
+            const input = document.getElementById('loginPassword');
+            const icon = document.getElementById('passwordEyeIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        }
+
+        /*************************************************************
+         * COOKIE HELPER FUNCTIONS
+         *************************************************************/
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (encodeURIComponent(value) || "") + expires + "; path=/; SameSite=Lax";
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+            }
+            return null;
+        }
+
+        function eraseCookie(name) {
+            document.cookie = name + "=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+        }
+
+        /*************************************************************
+         * 1. APP STATE & LOCAL DATA STORAGE
+         *************************************************************/
+        
+        const DEFAULT_USERS = [
+            { id: 'usr-1', name: 'Nguyễn Văn Admin', email: 'admin@dntg.com.vn', password: '123456', role: 'Admin', department: 'BOD' },
+            { id: 'usr-2', name: 'Trần Thị Demo', email: 'demo@dntg.com.vn', password: '123456', role: 'Member', department: 'SALES' },
+            { id: 'usr-3', name: 'Lê Hoàng Marketing', email: 'mkt@dntg.com.vn', password: '123456', role: 'Member', department: 'MKT' }
+        ];
+
+        // Sample initial meetings context
+        const DEFAULT_MEETINGS = [
+            {
+                id: 'mtg-101',
+                department: 'BOD',
+                title: 'Sales Monthly Meeting 01/10/2026',
+                room: 'Phòng (Tầng trệt)',
+                date: '2026-10-01',
+                startTime: '09:00',
+                endTime: '10:30',
+                type: 'IMPORTANT', // Red
+                summary: 'Đánh giá doanh số quý 3 và hoạch định chiến lược kinh doanh quý 4.',
+                ownerId: 'usr-1',
+                ownerName: 'Nguyễn Văn Admin'
+            },
+            {
+                id: 'mtg-102',
+                seriesId: 'series-demo-1',
+                department: 'SALES',
+                title: 'Họp Giao Ban Tuần Sales',
+                room: 'Phòng (Tầng trệt)',
+                date: '2026-10-01',
+                startTime: '14:00',
+                endTime: '15:00',
+                type: 'RECURRING', // Green
+                summary: 'Báo cáo tiến độ pipeline các hợp đồng trọng điểm.',
+                ownerId: 'usr-2',
+                ownerName: 'Trần Thị Demo'
+            },
+            {
+                id: 'mtg-103',
+                department: 'MKT',
+                title: 'Brainstorming Chiến Dịch Q4',
+                room: 'Phòng (Tầng trệt)',
+                date: '2026-10-05',
+                startTime: '10:00',
+                endTime: '11:30',
+                type: 'NORMAL', // Blue
+                summary: 'Thảo luận ý tưởng truyền thông ra mắt sản phẩm mới.',
+                ownerId: 'usr-3',
+                ownerName: 'Lê Hoàng Marketing'
+            }
+        ];
+
+        // Persistent Data Loading
+        let users = JSON.parse(localStorage.getItem('mrb_users')) || DEFAULT_USERS;
+        let meetings = JSON.parse(localStorage.getItem('mrb_meetings')) || DEFAULT_MEETINGS;
+        let currentUser = JSON.parse(localStorage.getItem('mrb_current_user')) || null;
+        let currentDate = new Date(2026, 9, 1); // Standardized initial date Oct 2026
+        let viewMode = 'MONTH'; // 'MONTH' | 'DAY' | 'YEAR' | 'LIST'
+        let selectedRoom = 'ALL';
+        let draggedMeetingId = null;
+
+        // Ensure users domain updated on older localStorage sessions
+        users = users.map(u => {
+            if (u.email && u.email.endsWith('@company.com')) {
+                u.email = u.email.replace('@company.com', '@dntg.com.vn');
+            }
+            return u;
+        });
+
+        /*************************************************************
+         * 2. AUTHENTICATION & USER MANAGEMENT LOGIC
+         *************************************************************/
+
+        function handleLogin(e) {
+            if (e) e.preventDefault();
+            const emailInput = document.getElementById('loginEmail').value.trim();
+            const passwordInput = document.getElementById('loginPassword').value.trim();
+            const rememberMe = document.getElementById('rememberMe').checked;
+            const errorMsg = document.getElementById('loginErrorMsg');
+
+            const foundUser = users.find(u => u.email.toLowerCase() === emailInput.toLowerCase() && u.password === passwordInput);
+
+            if (foundUser) {
+                currentUser = foundUser;
+                persistData();
+
+                // Save or erase remember login cookie
+                if (rememberMe) {
+                    setCookie('mrb_remembered_account', JSON.stringify({ email: foundUser.email, password: foundUser.password }), 30);
+                } else {
+                    eraseCookie('mrb_remembered_account');
+                }
+
+                errorMsg.classList.add('hidden');
+                initUI();
+                showToast(`Chào mừng ${currentUser.name} đã đăng nhập thành công!`, 'success');
+            } else {
+                errorMsg.textContent = 'Email hoặc mật khẩu không chính xác!';
+                errorMsg.classList.remove('hidden');
+            }
+        }
+
+        function fillQuickLogin(email, password) {
+            document.getElementById('loginEmail').value = email;
+            document.getElementById('loginPassword').value = password;
+            handleLogin(null);
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('mrb_current_user');
+            eraseCookie('mrb_remembered_account');
+            initUI();
+            showToast('Đã đăng xuất hệ thống.', 'info');
+        }
+
+        function openUserMgmtModal() {
+            if (!currentUser || currentUser.role !== 'Admin') return;
+            resetUserForm();
+            renderUsersTable();
+            document.getElementById('userMgmtModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeUserMgmtModal() {
+            document.getElementById('userMgmtModal').classList.add('hidden');
+        }
+
+        function renderUsersTable() {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = users.map(u => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                    <td class="p-3 font-bold text-slate-800 dark:text-slate-100">${u.name}</td>
+                    <td class="p-3 font-mono text-[11px] text-slate-500 dark:text-slate-400">${u.email}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">${u.department}</span></td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded font-extrabold uppercase text-[10px] ${u.role === 'Admin' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}">${u.role}</span></td>
+                    <td class="p-3 text-right space-x-1">
+                        <button onclick="editUser('${u.id}')" class="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50" title="Sửa">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="resetPassword('${u.id}')" class="p-1 rounded text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50" title="Reset Mật khẩu">
+                            <i data-lucide="key" class="w-4 h-4"></i>
+                        </button>
+                        ${u.id !== currentUser.id ? `
+                            <button onclick="deleteUser('${u.id}')" class="p-1 rounded text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50" title="Xóa">
+                                <i data-lucide="trash" class="w-4 h-4"></i>
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function saveUser(e) {
+            e.preventDefault();
+            const id = document.getElementById('mgmtUserId').value;
+            const name = document.getElementById('mgmtUserName').value.trim();
+            const email = document.getElementById('mgmtUserEmail').value.trim();
+            const dept = document.getElementById('mgmtUserDept').value;
+            const role = document.getElementById('mgmtUserRole').value;
+
+            if (id) {
+                const u = users.find(x => x.id === id);
+                if (u) {
+                    u.name = name;
+                    u.email = email;
+                    u.department = dept;
+                    u.role = role;
+                }
+            } else {
+                users.push({
+                    id: 'usr-' + Date.now(),
+                    name,
+                    email,
+                    password: '123456',
+                    role,
+                    department: dept
+                });
+            }
+
+            persistData();
+            resetUserForm();
+            renderUsersTable();
+            showToast('Lưu thông tin người dùng thành công!', 'success');
+        }
+
+        function editUser(id) {
+            const u = users.find(x => x.id === id);
+            if (!u) return;
+            document.getElementById('mgmtUserId').value = u.id;
+            document.getElementById('mgmtUserName').value = u.name;
+            document.getElementById('mgmtUserEmail').value = u.email;
+            document.getElementById('mgmtUserDept').value = u.department;
+            document.getElementById('mgmtUserRole').value = u.role;
+            document.getElementById('userFormModeTitle').textContent = 'Chỉnh Sửa Tài Khoản';
+            document.getElementById('cancelUserEditBtn').classList.remove('hidden');
+        }
+
+        function deleteUser(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa tài khoản này?')) {
+                users = users.filter(u => u.id !== id);
+                persistData();
+                renderUsersTable();
+                showToast('Đã xóa người dùng!', 'info');
+            }
+        }
+
+        function resetUserForm() {
+            document.getElementById('userForm').reset();
+            document.getElementById('mgmtUserId').value = '';
+            document.getElementById('userFormModeTitle').textContent = 'Tạo Tài Khoản Mới';
+            document.getElementById('cancelUserEditBtn').classList.add('hidden');
+        }
+
+        function resetPassword(userId) {
+            const u = users.find(usr => usr.id === userId);
+            if (!u) return;
+
+            const customPass = prompt(`Reset mật khẩu cho tài khoản ${u.name} (${u.email}):\nNhập mật khẩu mới (Hoặc nhấn OK để đặt về mặc định: 123456):`, "123456");
+
+            if (customPass !== null) {
+                u.password = customPass.trim() || '123456';
+                persistData();
+                showToast(`Đã đổi mật khẩu cho ${u.name} thành: ${u.password}`, 'success');
+            }
+        }
+
+        /*************************************************************
+         * 3. BOOKING & RECURRING MEETING LOGIC
+         *************************************************************/
+
+        function openBookingModal(meetingToEdit = null, prefillDateStr = null) {
+            const modal = document.getElementById('bookingModal');
+            const form = document.getElementById('bookingForm');
+            const deleteBtn = document.getElementById('deleteMeetingBtnModal');
+            modal.classList.remove('hidden');
+
+            if (meetingToEdit) {
+                document.getElementById('bookingModalTitle').textContent = 'Chỉnh Sửa Lịch Họp';
+                document.getElementById('meetingId').value = meetingToEdit.id;
+                document.getElementById('meetingSeriesId').value = meetingToEdit.seriesId || '';
+                document.getElementById('meetingDept').value = meetingToEdit.department;
+                document.getElementById('meetingTitle').value = meetingToEdit.title;
+                document.getElementById('meetingRoom').value = meetingToEdit.room;
+                document.getElementById('meetingDate').value = meetingToEdit.date;
+                document.getElementById('meetingStartTime').value = meetingToEdit.startTime;
+                document.getElementById('meetingEndTime').value = meetingToEdit.endTime;
+                document.getElementById('meetingSummary').value = meetingToEdit.summary || '';
+                
+                const radios = document.getElementsByName('meetingType');
+                radios.forEach(r => r.checked = (r.value === meetingToEdit.type));
+
+                const canEdit = currentUser && (currentUser.role === 'Admin' || currentUser.id === meetingToEdit.ownerId);
+                if (canEdit) {
+                    deleteBtn.classList.remove('hidden');
+                } else {
+                    deleteBtn.classList.add('hidden');
+                }
+            } else {
+                document.getElementById('bookingModalTitle').textContent = 'Đặt Lịch Họp Mới';
+                form.reset();
+                document.getElementById('meetingId').value = '';
+                document.getElementById('meetingSeriesId').value = '';
+                deleteBtn.classList.add('hidden');
+                
+                if (currentUser && currentUser.department) {
+                    document.getElementById('meetingDept').value = currentUser.department;
+                }
+                
+                const targetDate = prefillDateStr || currentDate.toISOString().split('T')[0];
+                document.getElementById('meetingDate').value = targetDate;
+                document.getElementById('meetingStartTime').value = '09:00';
+                document.getElementById('meetingEndTime').value = '10:00';
+            }
+
+            toggleRecurringOptions();
+            lucide.createIcons();
+        }
+
+        function closeBookingModal() {
+            document.getElementById('bookingModal').classList.add('hidden');
+        }
+
+        function toggleRecurringOptions() {
+            const radios = document.getElementsByName('meetingType');
+            let isRecurring = false;
+            radios.forEach(r => { if (r.checked && r.value === 'RECURRING') isRecurring = true; });
+
+            const container = document.getElementById('recurringOptionsContainer');
+            if (isRecurring) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        function saveMeeting(e) {
+            e.preventDefault();
+            
+            const meetingId = document.getElementById('meetingId').value;
+            const seriesId = document.getElementById('meetingSeriesId').value;
+            const dept = document.getElementById('meetingDept').value;
+            const title = document.getElementById('meetingTitle').value.trim();
+            const room = document.getElementById('meetingRoom').value;
+            const startDateStr = document.getElementById('meetingDate').value;
+            const startTime = document.getElementById('meetingStartTime').value;
+            const endTime = document.getElementById('meetingEndTime').value;
+            const summary = document.getElementById('meetingSummary').value.trim();
+
+            const typeRadios = document.getElementsByName('meetingType');
+            let selectedType = 'IMPORTANT';
+            typeRadios.forEach(r => { if (r.checked) selectedType = r.value; });
+
+            if (startTime >= endTime) {
+                showToast('Giờ kết thúc phải lớn hơn giờ bắt đầu!', 'error');
+                return;
+            }
+
+            const meetingDataPayload = {
+                department: dept,
+                title: title,
+                room: room,
+                date: startDateStr,
+                startTime: startTime,
+                endTime: endTime,
+                type: selectedType,
+                summary: summary
+            };
+
+            if (meetingId) {
+                const index = meetings.findIndex(m => m.id === meetingId);
+                if (index === -1) return;
+
+                if (currentUser.role !== 'Admin' && meetings[index].ownerId !== currentUser.id) {
+                    showToast('Bạn không có quyền sửa cuộc họp này!', 'error');
+                    return;
+                }
+
+                if (seriesId) {
+                    showRecurringChoiceModal(
+                        'Cập Nhật Lịch Họp Định Kỳ',
+                        `Cuộc họp này nằm trong chuỗi định kỳ.`,
+                        () => {
+                            meetings[index] = { ...meetings[index], ...meetingDataPayload };
+                            persistData();
+                            closeBookingModal();
+                            renderCalendar();
+                            showToast('Đã cập nhật lịch họp này!', 'success');
+                        },
+                        () => {
+                            meetings = meetings.map(m => {
+                                if (m.seriesId === seriesId) {
+                                    return {
+                                        ...m,
+                                        department: dept,
+                                        title: title,
+                                        room: room,
+                                        startTime: startTime,
+                                        endTime: endTime,
+                                        type: selectedType,
+                                        summary: summary
+                                    };
+                                }
+                                return m;
+                            });
+                            persistData();
+                            closeBookingModal();
+                            renderCalendar();
+                            showToast('Đã cập nhật TẤT CẢ lịch họp trong chuỗi định kỳ!', 'success');
+                        }
+                    );
+                } else {
+                    meetings[index] = { ...meetings[index], ...meetingDataPayload };
+                    persistData();
+                    closeBookingModal();
+                    renderCalendar();
+                    showToast('Đã cập nhật thông tin lịch họp!', 'success');
+                }
+            } else {
+                if (selectedType === 'RECURRING') {
+                    const freq = document.getElementById('recurringFrequency').value;
+                    const endMonth = parseInt(document.getElementById('recurringEndMonth').value);
+                    const endYear = parseInt(document.getElementById('recurringEndYear').value);
+
+                    const baseDate = new Date(startDateStr);
+                    const targetEndDate = new Date(endYear, endMonth, 0);
+
+                    let currDate = new Date(baseDate);
+                    let countCreated = 0;
+                    const newSeriesId = 'series-' + Date.now();
+
+                    while (currDate <= targetEndDate) {
+                        const formattedDateStr = currDate.toISOString().split('T')[0];
+                        
+                        const newMeeting = {
+                            id: 'mtg-' + Date.now() + '-' + countCreated,
+                            seriesId: newSeriesId,
+                            department: dept,
+                            title: title + (countCreated > 0 ? ` (Lặp ${countCreated + 1})` : ''),
+                            room: room,
+                            date: formattedDateStr,
+                            startTime: startTime,
+                            endTime: endTime,
+                            type: selectedType,
+                            summary: summary,
+                            ownerId: currentUser.id,
+                            ownerName: currentUser.name
+                        };
+                        meetings.push(newMeeting);
+                        countCreated++;
+
+                        if (freq === 'MONTHLY') {
+                            currDate.setMonth(currDate.getMonth() + 1);
+                        } else if (freq === 'QUARTERLY') {
+                            currDate.setMonth(currDate.getMonth() + 3);
+                        } else if (freq === 'YEARLY') {
+                            currDate.setFullYear(currDate.getFullYear() + 1);
+                        }
+                    }
+
+                    showToast(`Tự động tạo ${countCreated} cuộc họp định kỳ thành công!`, 'success');
+                } else {
+                    const newMeeting = {
+                        id: 'mtg-' + Date.now(),
+                        department: dept,
+                        title: title,
+                        room: room,
+                        date: startDateStr,
+                        startTime: startTime,
+                        endTime: endTime,
+                        type: selectedType,
+                        summary: summary,
+                        ownerId: currentUser.id,
+                        ownerName: currentUser.name
+                    };
+                    meetings.push(newMeeting);
+                    showToast('Đặt lịch họp mới thành công!', 'success');
+                }
+
+                persistData();
+                closeBookingModal();
+                renderCalendar();
+            }
+        }
+
+        function promptDeleteCurrentModalMeeting() {
+            const id = document.getElementById('meetingId').value;
+            if (id) deleteMeeting(id);
+        }
+
+        function deleteMeeting(id) {
+            const meeting = meetings.find(m => m.id === id);
+            if (!meeting) return;
+
+            if (currentUser.role !== 'Admin' && meeting.ownerId !== currentUser.id) {
+                showToast(`Chỉ người tạo [${meeting.ownerName}] hoặc Admin mới có quyền xóa!`, 'error');
+                return;
+            }
+
+            if (meeting.seriesId) {
+                showRecurringChoiceModal(
+                    'Xóa Lịch Họp Định Kỳ',
+                    `Cuộc họp "[${meeting.department}] ${meeting.title}" thuộc chuỗi lặp định kỳ.`,
+                    () => {
+                        meetings = meetings.filter(m => m.id !== id);
+                        persistData();
+                        closeBookingModal();
+                        renderCalendar();
+                        showToast('Đã xóa 1 lịch họp này!', 'info');
+                    },
+                    () => {
+                        meetings = meetings.filter(m => m.seriesId !== meeting.seriesId);
+                        persistData();
+                        closeBookingModal();
+                        renderCalendar();
+                        showToast('Đã xóa TẤT CẢ các lịch họp liên quan trong chuỗi!', 'info');
+                    }
+                );
+            } else {
+                if (confirm(`Bạn có chắc chắn muốn xóa cuộc họp "[${meeting.department}] ${meeting.title}"?`)) {
+                    meetings = meetings.filter(m => m.id !== id);
+                    persistData();
+                    closeBookingModal();
+                    renderCalendar();
+                    showToast('Đã xóa cuộc họp!', 'info');
+                }
+            }
+        }
+
+        function showRecurringChoiceModal(actionTitle, subtitle, onOnlyOne, onAllSeries) {
+            const modal = document.getElementById('recurringChoiceModal');
+            document.getElementById('recurringChoiceTitle').textContent = actionTitle;
+            document.getElementById('recurringChoiceSubtitle').textContent = subtitle;
+
+            const btnOnlyOne = document.getElementById('recurringChoiceOnlyOneBtn');
+            const btnAll = document.getElementById('recurringChoiceAllBtn');
+
+            btnOnlyOne.onclick = () => {
+                closeRecurringChoiceModal();
+                onOnlyOne();
+            };
+
+            btnAll.onclick = () => {
+                closeRecurringChoiceModal();
+                onAllSeries();
+            };
+
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeRecurringChoiceModal() {
+            document.getElementById('recurringChoiceModal').classList.add('hidden');
+        }
+
+        /*************************************************************
+         * 4. CALENDAR RENDER ENGINE & DRAG/DROP
+         *************************************************************/
+
+        function isMeetingExpired(m) {
+            const mEnd = new Date(`${m.date}T${m.endTime}`);
+            return mEnd < new Date();
+        }
+
+        function getMeetingColorClasses(m) {
+            const expired = isMeetingExpired(m);
+            if (expired) {
+                return 'bg-slate-200 dark:bg-slate-700/60 text-slate-500 border-slate-300 dark:border-slate-600 line-through opacity-80';
+            }
+            switch (m.type) {
+                case 'IMPORTANT':
+                    return 'bg-rose-500 text-white border-rose-600 shadow-sm';
+                case 'RECURRING':
+                    return 'bg-emerald-600 text-white border-emerald-700 shadow-sm';
+                case 'NORMAL':
+                default:
+                    return 'bg-blue-600 text-white border-blue-700 shadow-sm';
+            }
+        }
+
+        function changeViewMode(mode) {
+            viewMode = mode;
+            renderCalendar();
+        }
+
+        function changeRoom(room) {
+            selectedRoom = room;
+            renderCalendar();
+        }
+
+        function navigateCalendar(delta) {
+            if (viewMode === 'MONTH' || viewMode === 'LIST') {
+                currentDate.setMonth(currentDate.getMonth() + delta);
+            } else if (viewMode === 'DAY') {
+                currentDate.setDate(currentDate.getDate() + delta);
+            } else if (viewMode === 'YEAR') {
+                currentDate.setFullYear(currentDate.getFullYear() + delta);
+            }
+            renderCalendar();
+        }
+
+        function goToToday() {
+            currentDate = new Date();
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const container = document.getElementById('calendarDisplayContainer');
+            const headerText = document.getElementById('currentCalendarHeader');
+
+            // Filter meetings by selected room
+            const filteredMeetings = meetings.filter(m => selectedRoom === 'ALL' || m.room === selectedRoom);
+
+            if (viewMode === 'MONTH') {
+                const monthName = currentDate.toLocaleString('vi-VN', { month: 'long', year: 'numeric' });
+                headerText.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+                renderMonthView(container, filteredMeetings);
+            } else if (viewMode === 'DAY') {
+                headerText.textContent = currentDate.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+                renderDayView(container, filteredMeetings);
+            } else if (viewMode === 'YEAR') {
+                headerText.textContent = `Năm ${currentDate.getFullYear()}`;
+                renderYearView(container, filteredMeetings);
+            } else if (viewMode === 'LIST') {
+                const monthName = currentDate.toLocaleString('vi-VN', { month: 'long', year: 'numeric' });
+                headerText.textContent = `Danh Sách Lịch Họp - ${monthName}`;
+                renderListView(container, filteredMeetings);
+            }
+
+            lucide.createIcons();
+        }
+
+        function renderMonthView(container, meetingList) {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+
+            let startingDay = firstDay.getDay() - 1; // Start Monday
+            if (startingDay === -1) startingDay = 6;
+
+            const daysInMonth = lastDay.getDate();
+
+            let html = `
+                <div class="grid grid-cols-7 bg-slate-100 dark:bg-slate-700/50 text-center font-bold text-xs py-2 border-b border-slate-200 dark:border-slate-700">
+                    <div class="text-slate-600 dark:text-slate-300">T2</div>
+                    <div class="text-slate-600 dark:text-slate-300">T3</div>
+                    <div class="text-slate-600 dark:text-slate-300">T4</div>
+                    <div class="text-slate-600 dark:text-slate-300">T5</div>
+                    <div class="text-slate-600 dark:text-slate-300">T6</div>
+                    <div class="text-slate-600 dark:text-slate-300">T7</div>
+                    <div class="text-rose-500">CN</div>
+                </div>
+                <div class="grid grid-cols-7 flex-1 auto-rows-fr divide-x divide-y divide-slate-200 dark:divide-slate-700/60 min-h-[500px]">
+            `;
+
+            // Previous month padding
+            const prevMonthLastDay = new Date(year, month, 0).getDate();
+            for (let i = startingDay - 1; i >= 0; i--) {
+                const pDay = prevMonthLastDay - i;
+                html += `<div class="p-1.5 bg-slate-50/50 dark:bg-slate-900/30 opacity-40 text-xs font-semibold text-slate-400">${pDay}</div>`;
+            }
+
+            // Days of current month
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateObj = new Date(year, month, day);
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = (dateStr === todayStr);
+
+                const dayMeetings = meetingList.filter(m => m.date === dateStr);
+
+                html += `
+                    <div class="p-1.5 min-h-[90px] flex flex-col transition hover:bg-blue-50/20 dark:hover:bg-slate-700/20 cursor-pointer group"
+                         onclick="openBookingModal(null, '${dateStr}')"
+                         ondragover="handleDragOver(event)"
+                         ondragleave="handleDragLeave(event)"
+                         ondrop="handleDrop(event, '${dateStr}')">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs font-extrabold w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-blue-600 text-white shadow' : 'text-slate-700 dark:text-slate-300 group-hover:bg-slate-200 dark:group-hover:bg-slate-700'}">
+                                ${day}
+                            </span>
+                            ${dayMeetings.length > 0 ? `<span class="text-[10px] font-bold text-slate-400">${dayMeetings.length} cuộc</span>` : ''}
+                        </div>
+                        <div class="space-y-1 overflow-y-auto max-h-[80px]">
+                            ${dayMeetings.map(m => {
+                                const colorClass = getMeetingColorClasses(m);
+                                const isOwnerOrAdmin = currentUser && (currentUser.role === 'Admin' || currentUser.id === m.ownerId);
+                                return `
+                                    <div draggable="${isOwnerOrAdmin}" 
+                                         ondragstart="handleDragStart(event, '${m.id}')"
+                                         onclick="event.stopPropagation(); openBookingModal(meetings.find(x => x.id === '${m.id}'))" 
+                                         class="p-1 rounded-lg text-[10px] font-medium border leading-tight truncate cursor-grab active:cursor-grabbing transition ${colorClass}"
+                                         title="[${m.department}] ${m.title} (${m.startTime} - ${m.endTime})">
+                                        <div class="font-bold truncate">[${m.department}] ${m.title}</div>
+                                        <div class="text-[9px] opacity-90">${m.startTime} - ${m.endTime}</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderDayView(container, meetingList) {
+            const dateStr = currentDate.toISOString().split('T')[0];
+            const dayMeetings = meetingList.filter(m => m.date === dateStr);
+
+            let html = `
+                <div class="p-4 flex-1 flex flex-col space-y-4 overflow-y-auto">
+                    <div class="flex items-center justify-between border-b pb-3 border-slate-200 dark:border-slate-700">
+                        <span class="text-xs font-bold text-slate-500">Danh sách cuộc họp trong ngày (${dayMeetings.length})</span>
+                        <button onclick="openBookingModal(null, '${dateStr}')" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold">
+                            + Thêm lịch họp ngày này
+                        </button>
+                    </div>
+            `;
+
+            if (dayMeetings.length === 0) {
+                html += `<div class="text-center py-12 text-slate-400 text-xs">Không có lịch họp nào trong ngày này.</div>`;
+            } else {
+                html += `<div class="space-y-3">`;
+                dayMeetings.forEach(m => {
+                    const colorClass = getMeetingColorClasses(m);
+                    const isOwnerOrAdmin = currentUser && (currentUser.role === 'Admin' || currentUser.id === m.ownerId);
+                    html += `
+                        <div onclick="openBookingModal(meetings.find(x => x.id === '${m.id}'))" class="p-4 rounded-xl border flex items-center justify-between cursor-pointer transition hover:shadow-md ${colorClass}">
+                            <div class="space-y-1">
+                                <div class="flex items-center space-x-2">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-white/20">${m.department}</span>
+                                    <h4 class="text-sm font-bold">${m.title}</h4>
+                                </div>
+                                <div class="text-xs opacity-90 flex items-center space-x-3">
+                                    <span><i data-lucide="clock" class="w-3.5 h-3.5 inline mr-1"></i>${m.startTime} - ${m.endTime}</span>
+                                    <span><i data-lucide="map-pin" class="w-3.5 h-3.5 inline mr-1"></i>${m.room}</span>
+                                    <span><i data-lucide="user" class="w-3.5 h-3.5 inline mr-1"></i>${m.ownerName}</span>
+                                </div>
+                                ${m.summary ? `<p class="text-xs opacity-80 pt-1 line-clamp-2">${m.summary}</p>` : ''}
+                            </div>
+                            <div>
+                                ${isOwnerOrAdmin ? `
+                                    <span class="text-xs font-bold px-3 py-1 rounded-lg bg-white/20">Chỉnh sửa</span>
+                                ` : `
+                                    <span class="text-xs font-semibold text-slate-400 px-2 py-1 rounded bg-slate-100 dark:bg-slate-800">Locked</span>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderYearView(container, meetingList) {
+            const year = currentDate.getFullYear();
+            let html = `<div class="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto">`;
+
+            for (let month = 0; month < 12; month++) {
+                const monthDate = new Date(year, month, 1);
+                const monthName = monthDate.toLocaleString('vi-VN', { month: 'long' });
+                const monthMeetings = meetingList.filter(m => {
+                    const d = new Date(m.date);
+                    return d.getFullYear() === year && d.getMonth() === month;
+                });
+
+                html += `
+                    <div onclick="currentDate = new Date(${year}, ${month}, 1); changeViewMode('MONTH');" class="p-3 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200 dark:border-slate-600 hover:border-blue-500 cursor-pointer transition">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold capitalize text-slate-800 dark:text-slate-100">${monthName}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">${monthMeetings.length} cuộc</span>
+                        </div>
+                        <div class="space-y-1 max-h-[80px] overflow-hidden">
+                            ${monthMeetings.slice(0, 3).map(m => `
+                                <div class="text-[10px] truncate text-slate-600 dark:text-slate-300 font-medium">• [${m.department}] ${m.title}</div>
+                            `).join('')}
+                            ${monthMeetings.length > 3 ? `<div class="text-[9px] text-slate-400 font-bold">+${monthMeetings.length - 3} cuộc họp khác...</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderListView(container, meetingList) {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            const monthMeetings = meetingList.filter(m => {
+                const d = new Date(m.date);
+                return d.getFullYear() === year && d.getMonth() === month;
+            }).sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+
+            let html = `
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                        <thead class="bg-slate-100 dark:bg-slate-700/80 font-bold text-slate-600 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700">
+                            <tr>
+                                <th class="p-3">Ngày</th>
+                                <th class="p-3">Khung Giờ</th>
+                                <th class="p-3">Bộ Phận</th>
+                                <th class="p-3">Tiêu Đề Cuộc Họp</th>
+                                <th class="p-3">Phòng</th>
+                                <th class="p-3">Người Đặt</th>
+                                <th class="p-3 text-right">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
+            `;
+
+            if (monthMeetings.length === 0) {
+                html += `<tr><td colspan="7" class="p-8 text-center text-slate-400">Không có lịch họp nào trong tháng này.</td></tr>`;
+            } else {
+                monthMeetings.forEach(m => {
+                    const isOwnerOrAdmin = currentUser && (currentUser.role === 'Admin' || currentUser.id === m.ownerId);
+                    const expired = isMeetingExpired(m);
+                    html += `
+                        <tr class="${expired ? 'bg-slate-100/60 dark:bg-slate-800/60 text-slate-400 line-through' : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'}">
+                            <td class="p-3 font-bold">${m.date}</td>
+                            <td class="p-3 font-mono text-[11px]">${m.startTime} - ${m.endTime}</td>
+                            <td class="p-3"><span class="px-2 py-0.5 rounded font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">${m.department}</span></td>
+                            <td class="p-3 font-semibold text-slate-800 dark:text-slate-100">${m.title}</td>
+                            <td class="p-3">${m.room}</td>
+                            <td class="p-3">${m.ownerName}</td>
+                            <td class="p-3 text-right">
+                                ${isOwnerOrAdmin ? `
+                                    <button onclick="openBookingModal(meetings.find(x => x.id === '${m.id}'))" class="px-2 py-1 rounded bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300 font-semibold text-[11px]">Sửa/Xóa</button>
+                                ` : `
+                                    <span class="text-slate-400 text-[11px] italic">Locked</span>
+                                `}
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+        }
+
+        /*************************************************************
+         * 5. DRAG & DROP HANDLERS
+         *************************************************************/
+
+        function handleDragStart(e, id) {
+            draggedMeetingId = id;
+            e.dataTransfer.setData('text/plain', id);
+            e.target.classList.add('dragging');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDrop(e, targetDateStr) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+
+            if (!draggedMeetingId) return;
+
+            const meeting = meetings.find(m => m.id === draggedMeetingId);
+            if (!meeting) return;
+
+            if (currentUser.role !== 'Admin' && meeting.ownerId !== currentUser.id) {
+                showToast('Bạn không có quyền chuyển lịch họp này!', 'error');
+                return;
+            }
+
+            meeting.date = targetDateStr;
+            persistData();
+            renderCalendar();
+            showToast(`Đã chuyển lịch họp sang ngày ${targetDateStr}!`, 'success');
+        }
+
+        /*************************************************************
+         * 6. UTILITIES & INITIALIZATION
+         *************************************************************/
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('mrb_theme', isDark ? 'dark' : 'light');
+        }
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgClass = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-rose-600' : 'bg-slate-800';
+            toast.className = `px-4 py-3 rounded-xl text-white text-xs font-semibold shadow-lg transition-all transform translate-y-2 opacity-0 pointer-events-auto flex items-center space-x-2 ${bgClass}`;
+            toast.innerHTML = `<span>${msg}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function persistData() {
+            localStorage.setItem('mrb_users', JSON.stringify(users));
+            localStorage.setItem('mrb_meetings', JSON.stringify(meetings));
+            if (currentUser) {
+                localStorage.setItem('mrb_current_user', JSON.stringify(currentUser));
+            }
+        }
+
+        function initUI() {
+            const savedTheme = localStorage.getItem('mrb_theme');
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+
+            // Apply randomized background and update greeting text
+            applyRandomLoginBackground();
+            updateGreetingMessage();
+
+            // Restore remembered login from Cookies if available
+            const rememberedData = getCookie('mrb_remembered_account');
+            if (rememberedData) {
+                try {
+                    const parsed = JSON.parse(rememberedData);
+                    if (parsed.email) {
+                        document.getElementById('loginEmail').value = parsed.email;
+                    }
+                    if (parsed.password) {
+                        document.getElementById('loginPassword').value = parsed.password;
+                    }
+                    document.getElementById('rememberMe').checked = true;
+
+                    // Auto login if no active user session exists in localStorage
+                    if (!currentUser && parsed.email && parsed.password) {
+                        const savedUser = users.find(u => u.email.toLowerCase() === parsed.email.toLowerCase() && u.password === parsed.password);
+                        if (savedUser) {
+                            currentUser = savedUser;
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error reading remembered cookie:', err);
+                }
+            }
+
+            const loginView = document.getElementById('loginView');
+            const mainDashboardView = document.getElementById('mainDashboardView');
+            const mainHeader = document.getElementById('mainHeader');
+            const userHeaderBlock = document.getElementById('userHeaderBlock');
+            const roomSelectorWrapper = document.getElementById('roomSelectorWrapper');
+            const adminUserMgmtBtn = document.getElementById('adminUserMgmtBtn');
+
+            if (currentUser) {
+                loginView.classList.add('hidden');
+                if (mainHeader) mainHeader.classList.remove('hidden');
+                mainDashboardView.classList.remove('hidden');
+                mainDashboardView.classList.add('flex');
+                userHeaderBlock.classList.remove('hidden');
+                userHeaderBlock.classList.add('flex');
+                roomSelectorWrapper.classList.remove('hidden');
+
+                document.getElementById('headerUserName').textContent = currentUser.name;
+                document.getElementById('headerUserDept').textContent = currentUser.department;
+                document.getElementById('headerUserRoleBadge').textContent = currentUser.role;
+
+                if (currentUser.role === 'Admin') {
+                    adminUserMgmtBtn.classList.remove('hidden');
+                } else {
+                    adminUserMgmtBtn.classList.add('hidden');
+                }
+
+                renderCalendar();
+            } else {
+                loginView.classList.remove('hidden');
+                if (mainHeader) mainHeader.classList.add('hidden');
+                mainDashboardView.classList.add('hidden');
+                mainDashboardView.classList.remove('flex');
+                userHeaderBlock.classList.add('hidden');
+                roomSelectorWrapper.classList.add('hidden');
+            }
+
+            lucide.createIcons();
+        }
+
+        window.onload = function() {
+            initUI();
+        };
+    </script>
+</body>
+</html>
